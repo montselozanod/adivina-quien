@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Play, Settings, Trophy, Clock, RotateCcw } from 'lucide-react';
+import { Users, Play, Settings, Trophy, Clock, RotateCcw, Grid, X } from 'lucide-react';
 import { Team, GameState, Character } from './types';
 import { characters } from './Characters';
+import { getProxiedImageUrl } from './utils/imageProxy';
 
 const GuessWhoGame: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>('setup');
@@ -16,6 +17,51 @@ const GuessWhoGame: React.FC = () => {
   const [guessedCorrectly, setGuessedCorrectly] = useState<boolean>(false);
   const [roundsPlayed, setRoundsPlayed] = useState<number>(0);
   const [maxRounds, setMaxRounds] = useState<number>(5);
+  const [showGallery, setShowGallery] = useState<boolean>(false);
+
+  // Audio context para el sonido de tick-tock
+  useEffect(() => {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    let tickInterval: NodeJS.Timeout;
+    let isTickSound = true; // Alternar entre tick y tock
+
+    if (timerActive && timeLeft > 0) {
+      // Reproducir tick-tock cada segundo
+      tickInterval = setInterval(() => {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        // Alternar entre tick (alto) y tock (bajo) como un reloj
+        if (timeLeft <= 10) {
+          // Últimos 10 segundos: sonido urgente más rápido y agudo
+          oscillator.frequency.value = 1200;
+          gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+        } else {
+          // Sonido normal de reloj: tick-tock
+          oscillator.frequency.value = isTickSound ? 880 : 440; // Tick alto, tock bajo
+          gainNode.gain.setValueAtTime(0.25, audioContext.currentTime);
+        }
+        
+        oscillator.type = 'square'; // Sonido más mecánico como un reloj
+        
+        // Envelope corto y seco
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05);
+        
+        // Reproducir
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.05);
+        
+        isTickSound = !isTickSound; // Alternar para el próximo tick
+      }, 1000);
+    }
+
+    return () => {
+      if (tickInterval) clearInterval(tickInterval);
+    };
+  }, [timerActive, timeLeft]);
 
   // Timer effect
   useEffect(() => {
@@ -110,7 +156,20 @@ const GuessWhoGame: React.FC = () => {
           <div className="bg-white rounded-2xl shadow-2xl p-8">
             <div className="flex items-center justify-center mb-8">
               <Users className="w-12 h-12 text-purple-600 mr-4" />
-              <h1 className="text-4xl font-bold text-gray-800">Adivina Quién</h1>
+              <h1 className="text-4xl font-bold text-black">
+                <span className="text-red-500 text-5xl">¿</span>Adivina Quién<span className="text-red-500 text-5xl">?</span>
+              </h1>
+            </div>
+
+            {/* Botón de Galería */}
+            <div className="mb-8">
+              <button
+                onClick={() => setShowGallery(true)}
+                className="w-full py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl hover:from-indigo-600 hover:to-purple-600 transition font-semibold flex items-center justify-center"
+              >
+                <Grid className="w-5 h-5 mr-2" />
+                Ver todos los personajes ({characters.length})
+              </button>
             </div>
 
             <div className="mb-8">
@@ -169,6 +228,56 @@ const GuessWhoGame: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* Modal de Galería */}
+        {showGallery && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+              <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-800">Galería de Personajes</h2>
+                <button
+                  onClick={() => setShowGallery(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition"
+                >
+                  <X className="w-6 h-6 text-gray-600" />
+                </button>
+              </div>
+              <div className="p-6 overflow-y-auto">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                  {characters.map((character, index) => (
+                    <div
+                      key={index}
+                      className="bg-gray-50 rounded-lg p-3 hover:shadow-lg transition-shadow"
+                    >
+                      <div className="aspect-square mb-2 overflow-hidden rounded-lg bg-gray-200">
+                        <img
+                          src={getProxiedImageUrl(character.image)}
+                          alt={character.name}
+                          crossOrigin="anonymous"
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="%23ddd"/><text x="50" y="50" text-anchor="middle" dy=".3em" fill="%23999">?</text></svg>';
+                          }}
+                        />
+                      </div>
+                      <p className="text-sm font-semibold text-gray-800 text-center line-clamp-2">
+                        {character.name}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="p-4 border-t border-gray-200 bg-gray-50">
+                <button
+                  onClick={() => setShowGallery(false)}
+                  className="w-full py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-semibold"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -202,13 +311,18 @@ const GuessWhoGame: React.FC = () => {
               {currentCharacter?.image ? (
                 <div className="mb-6">
                   <img 
-                    src={currentCharacter.image} 
+                    src={getProxiedImageUrl(currentCharacter.image)} 
                     alt={currentCharacter.name}
-                    className="w-48 h-48 object-cover rounded-xl mx-auto shadow-lg"
+                    crossOrigin="anonymous"
+                    className="w-80 h-80 object-contain rounded-xl mx-auto shadow-lg"
+                    onError={(e) => {
+                      console.error('Error loading image:', currentCharacter.image);
+                      e.currentTarget.style.display = 'none';
+                    }}
                   />
                 </div>
               ) : (
-                <div className="w-48 h-48 bg-gray-300 rounded-xl mx-auto mb-6 flex items-center justify-center">
+                <div className="w-80 h-80 bg-gray-300 rounded-xl mx-auto mb-6 flex items-center justify-center">
                   <span className="text-gray-500 text-4xl">📷</span>
                 </div>
               )}
