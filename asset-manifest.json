@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/adivina-quien/static/css/main.050b7ba2.css",
+    "main.js": "/adivina-quien/static/js/main.42274304.js",
+    "index.html": "/adivina-quien/index.html",
+    "main.050b7ba2.css.map": "/adivina-quien/static/css/main.050b7ba2.css.map",
+    "main.42274304.js.map": "/adivina-quien/static/js/main.42274304.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.050b7ba2.css",
+    "static/js/main.42274304.js"
+  ]
+}
