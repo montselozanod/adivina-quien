@@ -1,18 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Play, Settings, Trophy, Clock, RotateCcw } from 'lucide-react';
-
-interface Character {
-  name: string;
-  image: string;
-}
-
-interface Team {
-  name: string;
-  score: number;
-  color: string;
-}
-
-type GameState = 'setup' | 'playing' | 'round-end' | 'game-over';
+import { Team, GameState, Character } from './types';
+import { characters } from './Characters';
 
 const GuessWhoGame: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>('setup');
@@ -27,41 +16,6 @@ const GuessWhoGame: React.FC = () => {
   const [guessedCorrectly, setGuessedCorrectly] = useState<boolean>(false);
   const [roundsPlayed, setRoundsPlayed] = useState<number>(0);
   const [maxRounds, setMaxRounds] = useState<number>(5);
-
-  const characters: Character[] = [
-    { name: 'Albert Einstein', image: '' },
-    { name: 'Frida Kahlo', image: '' },
-    { name: 'Leonardo da Vinci', image: '' },
-    { name: 'Marie Curie', image: '' },
-    { name: 'Nelson Mandela', image: '' },
-    { name: 'Cleopatra', image: '' },
-    { name: 'Abraham Lincoln', image: '' },
-    { name: 'Gandhi', image: '' },
-    { name: 'William Shakespeare', image: '' },
-    { name: 'Pablo Picasso', image: '' },
-    { name: 'Mozart', image: '' },
-    { name: 'Beethoven', image: '' },
-    { name: 'Michael Jordan', image: '' },
-    { name: 'Pelé', image: '' },
-    { name: 'Muhammad Ali', image: '' },
-    { name: 'Serena Williams', image: '' },
-    { name: 'Steve Jobs', image: '' },
-    { name: 'Bill Gates', image: '' },
-    { name: 'Elon Musk', image: '' },
-    { name: 'Mark Zuckerberg', image: '' },
-    { name: 'Harry Potter', image: '' },
-    { name: 'Spider-Man', image: '' },
-    { name: 'Batman', image: '' },
-    { name: 'Superman', image: '' },
-    { name: 'Mickey Mouse', image: '' },
-    { name: 'Mario Bros', image: '' },
-    { name: 'Pikachu', image: '' },
-    { name: 'Sonic', image: '' },
-    { name: 'Cristiano Ronaldo', image: '' },
-    { name: 'Lionel Messi', image: '' },
-    { name: 'The Beatles', image: '' },
-    { name: 'Elvis Presley', image: '' }
-  ];
 
   // Timer effect
   useEffect(() => {
