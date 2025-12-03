@@ -1,6 +1,6 @@
 # Adivina quien
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+App disponible en: https://montselozanod.github.io/adivina-quien 
 
 ## Available Scripts
 
