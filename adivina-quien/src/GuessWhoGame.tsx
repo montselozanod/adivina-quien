@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Users, Play, Settings, Trophy, Clock, RotateCcw, Grid, X } from 'lucide-react';
-import { Team, GameState, Character } from './types';
-import { characters } from './Characters';
+import { Team, GameState, Character, Category } from './types';
+import { characters, getCharactersByCategory, categoryNames, availableCategories } from './Characters';
 import { getProxiedImageUrl } from './utils/imageProxy';
 
 const GuessWhoGame: React.FC = () => {
@@ -18,6 +18,12 @@ const GuessWhoGame: React.FC = () => {
   const [roundsPlayed, setRoundsPlayed] = useState<number>(0);
   const [maxRounds, setMaxRounds] = useState<number>(5);
   const [showGallery, setShowGallery] = useState<boolean>(false);
+  const [selectedCategory, setSelectedCategory] = useState<Category>('all');
+
+  // Personajes filtrados por categoría
+  const filteredCharacters = useMemo(() => {
+    return getCharactersByCategory(selectedCategory);
+  }, [selectedCategory]);
 
   // Audio context para el sonido de tick-tock
   useEffect(() => {
@@ -25,8 +31,8 @@ const GuessWhoGame: React.FC = () => {
     let tickInterval: NodeJS.Timeout;
     let isTickSound = true; // Alternar entre tick y tock
 
-    if (timerActive && timeLeft > 0) {
-      // Reproducir tick-tock cada segundo
+    // Solo reproducir sonido en los últimos 5 segundos
+    if (timerActive && timeLeft > 0 && timeLeft <= 5) {
       tickInterval = setInterval(() => {
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
@@ -34,16 +40,9 @@ const GuessWhoGame: React.FC = () => {
         oscillator.connect(gainNode);
         gainNode.connect(audioContext.destination);
         
-        // Alternar entre tick (alto) y tock (bajo) como un reloj
-        if (timeLeft <= 10) {
-          // Últimos 10 segundos: sonido urgente más rápido y agudo
-          oscillator.frequency.value = 1200;
-          gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
-        } else {
-          // Sonido normal de reloj: tick-tock
-          oscillator.frequency.value = isTickSound ? 880 : 440; // Tick alto, tock bajo
-          gainNode.gain.setValueAtTime(0.25, audioContext.currentTime);
-        }
+        // Sonido urgente para los últimos 5 segundos
+        oscillator.frequency.value = 1200;
+        gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
         
         oscillator.type = 'square'; // Sonido más mecánico como un reloj
         
@@ -106,7 +105,7 @@ const GuessWhoGame: React.FC = () => {
   };
 
   const startNewRound = (): void => {
-    const randomCharacter = characters[Math.floor(Math.random() * characters.length)];
+    const randomCharacter = filteredCharacters[Math.floor(Math.random() * filteredCharacters.length)];
     setCurrentCharacter(randomCharacter);
     setTimeLeft(60);
     setGuessedCorrectly(false);
@@ -168,8 +167,33 @@ const GuessWhoGame: React.FC = () => {
                 className="w-full py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl hover:from-indigo-600 hover:to-purple-600 transition font-semibold flex items-center justify-center"
               >
                 <Grid className="w-5 h-5 mr-2" />
-                Ver todos los personajes ({characters.length})
+                Ver todos los personajes ({filteredCharacters.length})
               </button>
+            </div>
+
+            {/* Selector de Categoría */}
+            <div className="mb-8">
+              <label className="block text-lg font-semibold mb-3 text-gray-700">
+                Categoría de personajes:
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {availableCategories.map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => setSelectedCategory(category)}
+                    className={`py-3 px-4 rounded-lg font-medium transition text-sm ${
+                      selectedCategory === category
+                        ? 'bg-purple-600 text-white shadow-lg'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {categoryNames[category]}
+                  </button>
+                ))}
+              </div>
+              <p className="text-sm text-gray-500 mt-2 text-center">
+                {filteredCharacters.length} personajes disponibles
+              </p>
             </div>
 
             <div className="mb-8">
@@ -234,7 +258,10 @@ const GuessWhoGame: React.FC = () => {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
               <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-800">Galería de Personajes</h2>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-800">Galería de Personajes</h2>
+                  <p className="text-sm text-gray-500">{categoryNames[selectedCategory]} - {filteredCharacters.length} personajes</p>
+                </div>
                 <button
                   onClick={() => setShowGallery(false)}
                   className="p-2 hover:bg-gray-100 rounded-lg transition"
@@ -244,7 +271,7 @@ const GuessWhoGame: React.FC = () => {
               </div>
               <div className="p-6 overflow-y-auto">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                  {characters.map((character, index) => (
+                  {filteredCharacters.map((character, index) => (
                     <div
                       key={index}
                       className="bg-gray-50 rounded-lg p-3 hover:shadow-lg transition-shadow"
