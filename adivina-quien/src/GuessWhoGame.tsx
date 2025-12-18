@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Users, Play, Settings, Trophy, Clock, RotateCcw, Grid, X, Star } from 'lucide-react';
-import { Team, GameState, Character, Category, GameEvent } from './types';
-import { characters, getCharactersByCategory, getCharactersByCategories, categoryNames, availableCategories } from './Characters';
+import { Team, GameState, Character, Category } from './types';
+import { getCharactersByCategories, categoryNames, availableCategories } from './Characters';
 import { getAllEvents, getEventById } from './GameEvents';
-import { getProxiedImageUrl } from './utils/imageProxy';
+import { getProxiedImageUrl, needsCrossOrigin } from './utils/imageProxy';
 
 const GuessWhoGame: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>('setup');
@@ -21,6 +21,7 @@ const GuessWhoGame: React.FC = () => {
   const [showGallery, setShowGallery] = useState<boolean>(false);
   const [selectedCategories, setSelectedCategories] = useState<Category[]>(['all']);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [usedCharacters, setUsedCharacters] = useState<Set<string>>(new Set());
 
   // Obtener todos los eventos disponibles
   const allEvents = getAllEvents();
@@ -73,41 +74,52 @@ const GuessWhoGame: React.FC = () => {
     return selectedCategories.includes(category);
   };
 
-  // Audio context para el sonido de tick-tock
-  useEffect(() => {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    let tickInterval: NodeJS.Timeout;
-    let isTickSound = true; // Alternar entre tick y tock
+  // Referencia al AudioContext para reutilizarlo
+  const audioContextRef = React.useRef<AudioContext | null>(null);
 
+  // Función para reproducir el sonido de tick
+  const playTickSound = () => {
+    try {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      
+      const audioContext = audioContextRef.current;
+      
+      // Reanudar si está suspendido (política de autoplay del navegador)
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+      
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // Sonido urgente para los últimos 5 segundos
+      oscillator.frequency.value = 1200;
+      gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+      
+      oscillator.type = 'square';
+      
+      // Envelope corto y seco
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05);
+      
+      // Reproducir
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.05);
+    } catch (error) {
+      console.error('Error playing sound:', error);
+    }
+  };
+
+  // Audio effect para el sonido de tick-tock en los últimos 5 segundos
+  useEffect(() => {
     // Solo reproducir sonido en los últimos 5 segundos
     if (timerActive && timeLeft > 0 && timeLeft <= 5) {
-      tickInterval = setInterval(() => {
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        // Sonido urgente para los últimos 5 segundos
-        oscillator.frequency.value = 1200;
-        gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
-        
-        oscillator.type = 'square'; // Sonido más mecánico como un reloj
-        
-        // Envelope corto y seco
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05);
-        
-        // Reproducir
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.05);
-        
-        isTickSound = !isTickSound; // Alternar para el próximo tick
-      }, 1000);
+      playTickSound();
     }
-
-    return () => {
-      if (tickInterval) clearInterval(tickInterval);
-    };
   }, [timerActive, timeLeft]);
 
   // Timer effect
@@ -149,12 +161,34 @@ const GuessWhoGame: React.FC = () => {
   const startGame = (): void => {
     setRoundsPlayed(0);
     setTeams(teams.map(t => ({ ...t, score: 0 })));
-    startNewRound();
+    setUsedCharacters(new Set()); // Limpiar personajes usados al iniciar nuevo juego
+    startNewRound(new Set()); // Pasar set vacío para la primera ronda
   };
 
-  const startNewRound = (): void => {
-    const randomCharacter = filteredCharacters[Math.floor(Math.random() * filteredCharacters.length)];
-    setCurrentCharacter(randomCharacter);
+  const startNewRound = (usedSet?: Set<string>): void => {
+    const currentUsed = usedSet ?? usedCharacters;
+    
+    // Filtrar personajes que no han sido usados
+    const availableCharacters = filteredCharacters.filter(
+      char => !currentUsed.has(char.name)
+    );
+    
+    // Si no hay personajes disponibles, reiniciar la lista
+    if (availableCharacters.length === 0) {
+      setUsedCharacters(new Set());
+      const randomCharacter = filteredCharacters[Math.floor(Math.random() * filteredCharacters.length)];
+      setCurrentCharacter(randomCharacter);
+      setUsedCharacters(new Set([randomCharacter.name]));
+    } else {
+      const randomCharacter = availableCharacters[Math.floor(Math.random() * availableCharacters.length)];
+      setCurrentCharacter(randomCharacter);
+      setUsedCharacters(prev => {
+        const newSet = new Set(Array.from(prev));
+        newSet.add(randomCharacter.name);
+        return newSet;
+      });
+    }
+    
     setTimeLeft(60);
     setGuessedCorrectly(false);
     setGameState('playing');
@@ -379,7 +413,7 @@ const GuessWhoGame: React.FC = () => {
                         <img
                           src={getProxiedImageUrl(character.image)}
                           alt={character.name}
-                          crossOrigin="anonymous"
+                          crossOrigin={needsCrossOrigin(character.image) ? "anonymous" : undefined}
                           className="w-full h-full object-contain"
                           onError={(e) => {
                             e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="%23ddd"/><text x="50" y="50" text-anchor="middle" dy=".3em" fill="%23999">?</text></svg>';
@@ -439,7 +473,7 @@ const GuessWhoGame: React.FC = () => {
                   <img 
                     src={getProxiedImageUrl(currentCharacter.image)} 
                     alt={currentCharacter.name}
-                    crossOrigin="anonymous"
+                    crossOrigin={needsCrossOrigin(currentCharacter.image) ? "anonymous" : undefined}
                     className="w-80 h-80 object-contain rounded-xl mx-auto shadow-lg"
                     onError={(e) => {
                       console.error('Error loading image:', currentCharacter.image);
