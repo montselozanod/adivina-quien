@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.css": "/adivina-quien/static/css/main.050b7ba2.css",
-    "main.js": "/adivina-quien/static/js/main.42274304.js",
+    "main.css": "/adivina-quien/static/css/main.c643322d.css",
+    "main.js": "/adivina-quien/static/js/main.60319817.js",
     "index.html": "/adivina-quien/index.html",
-    "main.050b7ba2.css.map": "/adivina-quien/static/css/main.050b7ba2.css.map",
-    "main.42274304.js.map": "/adivina-quien/static/js/main.42274304.js.map"
+    "main.c643322d.css.map": "/adivina-quien/static/css/main.c643322d.css.map",
+    "main.60319817.js.map": "/adivina-quien/static/js/main.60319817.js.map"
   },
   "entrypoints": [
-    "static/css/main.050b7ba2.css",
-    "static/js/main.42274304.js"
+    "static/css/main.c643322d.css",
+    "static/js/main.60319817.js"
   ]
 }
