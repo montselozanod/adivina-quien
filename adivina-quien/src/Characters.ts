@@ -8,8 +8,9 @@ export const categoryNames: Record<Category, string> = {
   'historicos': '📜 Históricos',
   'animados': '🎮 Animados/Ficción',
   'politicos': '🏛️ Políticos',
-  'empresarios': '💼 Empresarios/Tech'
-};
+  'empresarios': '💼 Empresarios/Tech',
+  'especiales': '⭐ Especiales'
+}
 
 export const characters: Character[] = [
   // HISTÓRICOS
@@ -129,6 +130,14 @@ export const getCharactersByCategory = (category: Category): Character[] => {
     return characters;
   }
   return characters.filter(char => char.category === category);
+};
+
+// Función para obtener personajes filtrados por múltiples categorías
+export const getCharactersByCategories = (categories: Category[]): Character[] => {
+  if (categories.includes('all') || categories.length === 0) {
+    return characters;
+  }
+  return characters.filter(char => categories.includes(char.category));
 };
 
 // Obtener todas las categorías disponibles

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Users, Play, Settings, Trophy, Clock, RotateCcw, Grid, X } from 'lucide-react';
-import { Team, GameState, Character, Category } from './types';
-import { characters, getCharactersByCategory, categoryNames, availableCategories } from './Characters';
+import { Users, Play, Settings, Trophy, Clock, RotateCcw, Grid, X, Star } from 'lucide-react';
+import { Team, GameState, Character, Category, GameEvent } from './types';
+import { characters, getCharactersByCategory, getCharactersByCategories, categoryNames, availableCategories } from './Characters';
+import { getAllEvents, getEventById } from './GameEvents';
 import { getProxiedImageUrl } from './utils/imageProxy';
 
 const GuessWhoGame: React.FC = () => {
@@ -18,12 +19,59 @@ const GuessWhoGame: React.FC = () => {
   const [roundsPlayed, setRoundsPlayed] = useState<number>(0);
   const [maxRounds, setMaxRounds] = useState<number>(5);
   const [showGallery, setShowGallery] = useState<boolean>(false);
-  const [selectedCategory, setSelectedCategory] = useState<Category>('all');
+  const [selectedCategories, setSelectedCategories] = useState<Category[]>(['all']);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
-  // Personajes filtrados por categoría
+  // Obtener todos los eventos disponibles
+  const allEvents = getAllEvents();
+
+  // Personajes filtrados por categorías seleccionadas + personajes del evento
   const filteredCharacters = useMemo(() => {
-    return getCharactersByCategory(selectedCategory);
-  }, [selectedCategory]);
+    let chars = getCharactersByCategories(selectedCategories);
+    
+    // Si hay un evento seleccionado, agregar sus personajes especiales
+    if (selectedEventId) {
+      const event = getEventById(selectedEventId);
+      if (event && event.characters.length > 0) {
+        chars = [...chars, ...event.characters];
+      }
+    }
+    
+    return chars;
+  }, [selectedCategories, selectedEventId]);
+
+  // Función para toggle de categoría
+  const toggleCategory = (category: Category) => {
+    if (category === 'all') {
+      setSelectedCategories(['all']);
+      return;
+    }
+    
+    setSelectedCategories(prev => {
+      // Si 'all' está seleccionado, quitarlo y agregar la nueva categoría
+      if (prev.includes('all')) {
+        return [category];
+      }
+      
+      // Si la categoría ya está, quitarla
+      if (prev.includes(category)) {
+        const newCategories = prev.filter(c => c !== category);
+        // Si no quedan categorías, volver a 'all'
+        return newCategories.length === 0 ? ['all'] : newCategories;
+      }
+      
+      // Agregar la categoría
+      return [...prev, category];
+    });
+  };
+
+  // Verificar si una categoría está seleccionada
+  const isCategorySelected = (category: Category): boolean => {
+    if (category === 'all') {
+      return selectedCategories.includes('all');
+    }
+    return selectedCategories.includes(category);
+  };
 
   // Audio context para el sonido de tick-tock
   useEffect(() => {
@@ -171,22 +219,68 @@ const GuessWhoGame: React.FC = () => {
               </button>
             </div>
 
-            {/* Selector de Categoría */}
+            {/* Selector de Evento/Familia */}
+            <div className="mb-8">
+              <label className="block text-lg font-semibold mb-3 text-gray-700 flex items-center">
+                <Star className="w-5 h-5 mr-2 text-yellow-500" />
+                Evento / Familia especial:
+              </label>
+              <p className="text-xs text-gray-500 mb-2">Agrega personajes especiales de una familia o evento</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <button
+                  onClick={() => setSelectedEventId(null)}
+                  className={`py-3 px-4 rounded-lg font-medium transition text-sm ${
+                    selectedEventId === null
+                      ? 'bg-yellow-500 text-white shadow-lg'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  🚫 Ninguno
+                </button>
+                {allEvents.map((event) => (
+                  <button
+                    key={event.id}
+                    onClick={() => setSelectedEventId(event.id)}
+                    className={`py-3 px-4 rounded-lg font-medium transition text-sm ${
+                      selectedEventId === event.id
+                        ? 'bg-yellow-500 text-white shadow-lg'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {event.emoji} {event.name}
+                    {event.characters.length > 0 && (
+                      <span className="ml-1 text-xs">({event.characters.length})</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              {selectedEventId && (
+                <p className="text-sm text-yellow-600 mt-2 text-center">
+                  ⭐ {getEventById(selectedEventId)?.characters.length || 0} personajes especiales serán agregados
+                </p>
+              )}
+            </div>
+
+            {/* Selector de Categorías (múltiple) */}
             <div className="mb-8">
               <label className="block text-lg font-semibold mb-3 text-gray-700">
-                Categoría de personajes:
+                Categorías de personajes:
               </label>
+              <p className="text-xs text-gray-500 mb-2">Selecciona una o más categorías</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {availableCategories.map((category) => (
                   <button
                     key={category}
-                    onClick={() => setSelectedCategory(category)}
-                    className={`py-3 px-4 rounded-lg font-medium transition text-sm ${
-                      selectedCategory === category
+                    onClick={() => toggleCategory(category)}
+                    className={`py-3 px-4 rounded-lg font-medium transition text-sm flex items-center justify-center ${
+                      isCategorySelected(category)
                         ? 'bg-purple-600 text-white shadow-lg'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
+                    {isCategorySelected(category) && category !== 'all' && (
+                      <span className="mr-1">✓</span>
+                    )}
                     {categoryNames[category]}
                   </button>
                 ))}
@@ -260,7 +354,12 @@ const GuessWhoGame: React.FC = () => {
               <div className="p-6 border-b border-gray-200 flex items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-800">Galería de Personajes</h2>
-                  <p className="text-sm text-gray-500">{categoryNames[selectedCategory]} - {filteredCharacters.length} personajes</p>
+                  <p className="text-sm text-gray-500">
+                    {selectedCategories.includes('all') 
+                      ? categoryNames['all'] 
+                      : selectedCategories.map(c => categoryNames[c]).join(', ')
+                    } - {filteredCharacters.length} personajes
+                  </p>
                 </div>
                 <button
                   onClick={() => setShowGallery(false)}

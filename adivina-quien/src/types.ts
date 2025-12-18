@@ -6,12 +6,22 @@ export type Category =
   | 'historicos'    // Personajes históricos
   | 'animados'      // Personajes animados/ficticios
   | 'politicos'     // Políticos
-  | 'empresarios';  // Empresarios y tecnología
+  | 'empresarios'   // Empresarios y tecnología
+  | 'especiales';   // Personajes especiales del evento/familia
 
 export interface Character {
   name: string;
   image: string;
   category: Category;
+}
+
+// Evento o Familia con personajes especiales
+export interface GameEvent {
+  id: string;
+  name: string;
+  emoji: string;
+  description: string;
+  characters: Character[];
 }
 
 export interface Team {
