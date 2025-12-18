@@ -257,7 +257,7 @@ const GuessWhoGame: React.FC = () => {
             <div className="mb-8">
               <label className="block text-lg font-semibold mb-3 text-gray-700 flex items-center">
                 <Star className="w-5 h-5 mr-2 text-yellow-500" />
-                Evento / Familia especial:
+                Evento / Familia:
               </label>
               <p className="text-xs text-gray-500 mb-2">Agrega personajes especiales de una familia o evento</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
